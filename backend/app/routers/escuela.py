@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models.models import Escuela, Modulo, Grado
-from app.schemas.escuela import EscuelaCreate, EscuelaResponse
+from app.schemas.escuela import EscuelaCreate, EscuelaResponse, EscuelaResumen, GradoConMaestra
 from app.schemas.modulo import ModuloCreate, ModuloResponse
 from app.schemas.grado import GradoCreate, GradoResponse
 from typing import List
@@ -29,6 +29,29 @@ def obtener_escuela(escuela_id: int, db: Session = Depends(get_db)):
     if not escuela:
         raise HTTPException(status_code=404, detail="Escuela no encontrada")
     return escuela
+
+@router.get("/{escuela_id}/resumen", response_model=EscuelaResumen)
+def resumen_escuela(escuela_id: int, db: Session = Depends(get_db)):
+    escuela = db.query(Escuela).filter(Escuela.id == escuela_id).first()
+    if not escuela:
+        raise HTTPException(status_code=404, detail="Escuela no encontrada")
+
+    grados_con_maestra = []
+    for grado in escuela.grados:
+        grados_con_maestra.append(GradoConMaestra(
+            id=grado.id,
+            nombre=grado.nombre,
+            maestra=grado.maestra.nombre if grado.maestra else None
+        ))
+
+    return EscuelaResumen(
+        id=escuela.id,
+        nombre=escuela.nombre,
+        numero=escuela.numero,
+        modulos=escuela.modulos,
+        grados=grados_con_maestra,
+        profesores=escuela.profesores
+    )
 
 # ── Módulos ───────────────────────────────────────────────
 
