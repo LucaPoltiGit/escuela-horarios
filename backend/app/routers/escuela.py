@@ -5,6 +5,8 @@ from app.models.models import Escuela, Modulo, Grado
 from app.schemas.escuela import EscuelaCreate, EscuelaResponse, EscuelaResumen, GradoConMaestra
 from app.schemas.modulo import ModuloCreate, ModuloResponse
 from app.schemas.grado import GradoCreate, GradoResponse
+from app.services.scheduler.engine import generar_horario
+from app.schemas.horario import HorarioResponse, SlotAsignado
 from typing import List
 
 router = APIRouter(prefix="/escuelas", tags=["Escuelas"])
@@ -86,3 +88,29 @@ def agregar_grado(escuela_id: int, grado: GradoCreate, db: Session = Depends(get
 @router.get("/{escuela_id}/grados", response_model=List[GradoResponse])
 def listar_grados(escuela_id: int, db: Session = Depends(get_db)):
     return db.query(Grado).filter(Grado.escuela_id == escuela_id).all()
+
+# ── Horarios ────────────────────────────────────────────────
+@router.post("/{escuela_id}/generar-horario", response_model=HorarioResponse)
+def generar_horario_escuela(escuela_id: int, db: Session = Depends(get_db)):
+    escuela = db.query(Escuela).filter(Escuela.id == escuela_id).first()
+    if not escuela:
+        raise HTTPException(status_code=404, detail="Escuela no encontrada")
+
+    resultado = generar_horario(
+        profesores=escuela.profesores,
+        modulos=escuela.modulos,
+        grados=escuela.grados
+    )
+
+    if not resultado:
+        return HorarioResponse(
+            escuela_id=escuela_id,
+            exitoso=False,
+            mensaje="No se encontró una combinación válida de horarios"
+        )
+
+    return HorarioResponse(
+        escuela_id=escuela_id,
+        exitoso=True,
+        asignaciones=[SlotAsignado(**vars(a)) for a in resultado.asignaciones]
+    )
