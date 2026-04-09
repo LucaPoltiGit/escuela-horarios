@@ -98,3 +98,16 @@ class AsignacionCurricular(Base):
 
     profesor = relationship("ProfesorCurricular", back_populates="asignaciones")
     grado = relationship("Grado", back_populates="asignaciones")
+
+# ── User ─────────────────
+
+class Usuario(Base):
+    __tablename__ = "usuarios"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, nullable=False, index=True)
+    nombre = Column(String, nullable=False)
+    hashed_password = Column(String, nullable=False)
+    escuela_id = Column(Integer, ForeignKey("escuelas.id"), nullable=True)
+
+    escuela = relationship("Escuela", backref="usuario")
